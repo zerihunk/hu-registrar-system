@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HU Registrar | Pro Suite 2026</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50; --accent: #3498db; --bg: #f4f7fa;
+            --sidebar: #1a252f; --success: #27ae60; --danger: #e74c3c;
+            --warning: #f39c12; --border: #e1e8ed; --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        body { font-family: 'Inter', sans-serif; margin: 0; display: flex; background: var(--bg); height: 100vh; overflow: hidden; }
+
+        .sidebar { width: 260px; background: var(--sidebar); color: white; display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar-brand { padding: 30px 20px; font-size: 20px; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; color: var(--accent); }
+        .nav-item { padding: 15px 25px; cursor: pointer; display: flex; align-items: center; color: #95a5a6; transition: 0.2s; }
+        .nav-item.active { background: rgba(255,255,255,0.05); color: white; border-left: 4px solid var(--accent); }
+
+        .main { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .header { height: 70px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+        .content { padding: 30px; overflow-y: auto; flex-grow: 1; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow); border-top: 4px solid var(--accent); }
+        .stat-val { font-size: 24px; font-weight: 800; color: var(--primary); }
+
+        .card { background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 25px; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px; font-size: 11px; color: #7f8c8d; border-bottom: 2px solid #eee; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid #f9f9f9; font-size: 13px; }
+        
+        .row-complete { background-color: #e8f8f5 !important; }
+        .row-complete .badge { background: var(--success) !important; color: white; }
+        .row-locked select, .row-locked .send-btn { opacity: 0.5; pointer-events: none; }
+        
+        .btn { padding: 8px 15px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-primary { background: var(--accent); color: white; }
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        
+        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; margin-top: 5px; box-sizing: border-box; }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 500px; max-height: 80vh; overflow-y: auto; }
+
+        #loginScreen { position: fixed; inset: 0; background: var(--sidebar); display: flex; align-items: center; justify-content: center; z-index: 10000; }
+        .section { display: none; }
+        .active-section { display: block; }
+
+        .edit-serv-item { display: flex; justify-content: space-between; padding: 5px; background: #f8f9fa; margin-bottom: 5px; border-radius: 4px; border: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+    <div id="appModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Modal</h3>
+            <div id="modalBody"></div>
+            <div id="modalFooter"></div>
+        </div>
+    </div>
+
+    <div id="loginScreen">
+        <div style="background: white; padding: 40px; border-radius: 15px; width: 320px; text-align: center;">
+            <h2 style="color: var(--primary);">HU Registrar</h2>
+            <input type="text" id="lUser" placeholder="Username" onkeypress="if(event.key==='Enter') doLogin()">
+            <input type="password" id="lPass" placeholder="Password" style="margin: 15px 0;" onkeypress="if(event.key==='Enter') doLogin()">
+            <button class="btn btn-primary" style="width:100%; justify-content: center;" onclick="doLogin()">Login</button>
+            <a onclick="forgotPassword()" style="font-size:12px; color:var(--accent); cursor:pointer; display:block; margin-top:15px;">Forgot Password?</a>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">HU Registrar</div>
+        <div class="nav-item active" onclick="nav('view-dash', this)"><i class="fas fa-chart-line"></i> &nbsp; Dashboard</div>
+        <div class="nav-item" onclick="nav('view-reg', this)"><i class="fas fa-user-plus"></i> &nbsp; New Entry</div>
+        <div id="nav-u" class="nav-item" onclick="nav('view-users', this)"><i class="fas fa-users-cog"></i> &nbsp; Staff Manager</div>
+        <div id="nav-s" class="nav-item" onclick="nav('view-set', this)"><i class="fas fa-cogs"></i> &nbsp; System Settings</div>
+        <div class="nav-item" style="margin-top:auto;" onclick="location.reload()"><i class="fas fa-power-off"></i> &nbsp; Logout</div>
+    </div>
+
+    <div class="main">
+        <div class="header">
+            <h3 id="pageTitle">Dashboard</h3>
+            <div id="userBadge" style="font-weight:600; color:var(--accent);"></div>
+        </div>
+
+        <div class="content">
+            <div id="view-dash" class="section active-section">
+                <div class="stats-grid">
+                    <div class="stat-card"><div>Total Requests</div><div class="stat-val" id="stTotal">0</div></div>
+                    <div class="stat-card" style="border-color: var(--warning);"><div>In Progress</div><div class="stat-val" id="stProgress">0</div></div>
+                    <div class="stat-card" style="border-color: var(--success);"><div>Completed</div><div class="stat-val" id="stDone">0</div></div>
+                    <div class="stat-card" style="border-color: var(--danger);"><div>Active Staff</div><div class="stat-val" id="stStaff">0</div></div>
+                </div>
+                <div class="card">
+                    <h3>Active Workflows (Name: History | Services: Edit if yours)</h3>
+                    <table>
+                        <thead><tr><th>Student</th><th>Services</th><th>Status</th><th>Allocation</th><th>Action</th></tr></thead>
+                        <tbody id="dashTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-reg" class="section">
+                <div class="card" style="max-width: 650px; margin: 0 auto;">
+                    <h3>New Service Request</h3>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                        <input type="text" id="inName" placeholder="Full Name">
+                        <input type="text" id="inDept" placeholder="Department">
+                    </div>
+                    <input type="date" id="inDate" style="margin-top:15px;">
+                    <div style="display:flex; gap:10px; margin-top:15px; height: 150px;">
+                        <div style="flex:1; border:1px solid #ddd; border-radius:6px; overflow-y:auto;">
+                            <div style="font-size:10px; background:#f8f9fa; padding:5px; text-align:center;">SELECTED</div>
+                            <div id="selServList"></div>
+                        </div>
+                        <div style="flex:1; border:1px solid #ddd; border-radius:6px; overflow-y:auto;">
+                            <div style="font-size:10px; background:#f8f9fa; padding:5px; text-align:center;">AVAILABLE</div>
+                            <div id="availServList"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="width:100%; margin-top:20px; justify-content:center;" onclick="saveNewRequest()">Register Student</button>
+                </div>
+            </div>
+
+            <div id="view-users" class="section">
+                <div class="card">
+                    <h3>Register Staff</h3>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                        <input type="text" id="uFull" placeholder="Name">
+                        <input type="email" id="uEmail" placeholder="Email">
+                        <input type="text" id="uId" placeholder="Login ID">
+                        <input type="password" id="uPw" placeholder="Password">
+                        <select id="uRoomSelect"></select>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:15px; height: 120px;">
+                        <div style="flex:1; border:1px solid #ddd; border-radius:6px; overflow-y:auto;" id="selRoleList"></div>
+                        <div style="flex:1; border:1px solid #ddd; border-radius:6px; overflow-y:auto;" id="availRoleList"></div>
+                    </div>
+                    <button class="btn btn-primary" style="margin-top:15px;" onclick="saveStaff()">Add Staff User</button>
+                </div>
+                <div class="card">
+                    <table>
+                        <thead><tr><th>Name</th><th>Email</th><th>Login ID</th><th>Status</th><th>Roles</th><th>Actions</th></tr></thead>
+                        <tbody id="staffTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-set" class="section">
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px;">
+                    <div class="card">
+                        <h4>Services</h4>
+                        <div style="display:flex; gap:5px;"><input id="setS"><button onclick="addConfig('services','setS')" class="btn btn-primary">+</button></div>
+                        <div id="listS" style="margin-top:10px;"></div>
+                    </div>
+                    <div class="card">
+                        <h4>Workflow Roles</h4>
+                        <div style="display:flex; gap:5px;"><input id="setR"><button onclick="addConfig('roles','setR')" class="btn btn-primary">+</button></div>
+                        <div id="listR" style="margin-top:10px;"></div>
+                    </div>
+                    <div class="card">
+                        <h4>Offices/Rooms</h4>
+                        <div style="display:flex; gap:5px;"><input id="setRm"><button onclick="addConfig('rooms','setRm')" class="btn btn-primary">+</button></div>
+                        <div id="listRm" style="margin-top:10px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let config = JSON.parse(localStorage.getItem('hu_config')) || {
+        services: ["Original Degree", "Transcript", "Student Copy"],
+        roles: ["Admission Office", "Registrar Head", "Recorder"],
+        rooms: ["Room 01", "Room 05", "Room 10"]
+    };
+    let users = JSON.parse(localStorage.getItem('hu_users')) || [
+        {name:"Super Admin", login:"admin", pass:"admin123", email:"admin@hu.edu.et", userRoles:["Admin"], office:"HQ", status:"Active"}
+    ];
+    let requests = JSON.parse(localStorage.getItem('hu_reqs')) || [];
+    let currentUser = null;
+    let tempServs = [], tempRoles = [], editTempServs = [];
+
+    function doLogin() {
+        const u = document.getElementById('lUser').value, p = document.getElementById('lPass').value;
+        const found = users.find(x => x.login === u && x.pass === p);
+        if(found) {
+            if(found.status === "Inactive") return alert("Account Deactivated!");
+            currentUser = found; document.getElementById('loginScreen').style.display='none'; render();
+        } else alert("Invalid Login!");
+    }
+
+    function forgotPassword() {
+        const email = prompt("Enter your email:");
+        if(users.find(x => x.email === email)) alert("Success: Password has been sent to " + email);
+        else if(email) alert("Email not found!");
+    }
+
+    function render() {
+        document.getElementById('stTotal').innerText = requests.length;
+        document.getElementById('stProgress').innerText = requests.filter(r => r.step !== 'COMPLETE').length;
+        document.getElementById('stDone').innerText = requests.filter(r => r.step === 'COMPLETE').length;
+        document.getElementById('stStaff').innerText = users.filter(u => u.status === 'Active').length;
+        document.getElementById('userBadge').innerText = currentUser.name;
+
+        document.getElementById('dashTable').innerHTML = requests.map((r, i) => {
+            const isAdmin = currentUser.userRoles.includes("Admin");
+            const isCreator = r.createdBy === currentUser.name;
+            const canEdit = isAdmin || isCreator;
+            const isMyTurn = isAdmin || currentUser.userRoles.includes(r.step);
+            const isComplete = r.step === 'COMPLETE';
+            const lockClass = (isAdmin) ? '' : ((isComplete || !isMyTurn) ? 'row-locked' : '');
+            const rowClass = isComplete ? 'row-complete' : '';
+            
+            return `<tr class="${rowClass}">
+                <td onclick="openHist(${i})" style="color:var(--accent); cursor:pointer; font-weight:bold;">${r.name}</td>
+                <td onclick="${canEdit ? `openEditServ(${i})` : ''}" style="${canEdit ? 'cursor:pointer; color:var(--accent); text-decoration:underline;' : ''}">
+                    <small>${r.servs.join(", ")}</small>
+                </td>
+                <td><span class="badge" style="background:#eef">${r.step}</span></td>
+                <td class="${lockClass}">
+                    <div style="display:flex; gap:5px;">
+                        <select id="rR-${i}" style="flex:2;">${config.roles.map(x=>`<option ${r.step===x?'selected':''}>${x}</option>`).join('')}<option value="COMPLETE" ${isComplete?'selected':''}>COMPLETE</option></select>
+                        <select id="rRm-${i}" style="flex:1;">${config.rooms.map(x=>`<option ${r.room===x?'selected':''}>${x}</option>`).join('')}</select>
+                    </div>
+                </td>
+                <td>
+                    <span class="${lockClass}"><button class="btn btn-primary send-btn" onclick="delegate(${i})">${isComplete && isAdmin ? 'Update' : 'Send'}</button></span>
+                    <i class="fas fa-trash" style="color:red; cursor:pointer; margin-left:10px;" onclick="delReq(${i})" title="Delete Request"></i>
+                </td>
+            </tr>`;
+        }).join('');
+
+        document.getElementById('staffTable').innerHTML = users.map((u, i) => `
+            <tr>
+                <td>${u.name}</td><td>${u.email}</td><td>${u.login}</td>
+                <td style="color:${u.status==='Active'?'green':'red'}"><b>${u.status}</b></td>
+                <td><small>${u.userRoles.join(",")}</small></td>
+                <td>
+                    <button class="btn" onclick="toggleStaff(${i})" title="Change Status">Status</button>
+                    <i class="fas fa-eye" style="color:var(--accent); cursor:pointer; margin-left:10px;" onclick="alert('Password for ${u.name}: ' + users[${i}].pass)" title="View Password"></i>
+                    <i class="fas fa-trash" style="color:red; cursor:pointer; margin-left:10px;" onclick="delUser(${i})" title="Delete Staff"></i>
+                </td>
+            </tr>
+        `).join('');
+
+        const draw = (id, arr, k) => {
+            document.getElementById(id).innerHTML = arr.map((x, idx) => `
+                <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee; font-size:13px;">
+                    ${x} <i class="fas fa-trash" style="color:red; cursor:pointer;" onclick="remConfig('${k}',${idx})"></i>
+                </div>
+            `).join('');
+        }
+        draw('listS', config.services, 'services');
+        draw('listR', config.roles, 'roles');
+        draw('listRm', config.rooms, 'rooms');
+
+        renderPanes();
+        document.getElementById('uRoomSelect').innerHTML = config.rooms.map(x=>`<option>${x}</option>`).join('');
+        document.getElementById('nav-u').style.display = currentUser.userRoles.includes("Admin") ? 'flex' : 'none';
+        document.getElementById('nav-s').style.display = currentUser.userRoles.includes("Admin") ? 'flex' : 'none';
+    }
+
+    function openEditServ(i) {
+        editTempServs = [...requests[i].servs];
+        document.getElementById('modalTitle').innerText = "Edit Services for " + requests[i].name;
+        renderEditModal(i);
+        document.getElementById('appModal').style.display = 'flex';
+    }
+
+    function renderEditModal(idx) {
+        let html = `<div style="margin-bottom:15px;"><b>Current Services:</b></div>`;
+        html += editTempServs.map((s, si) => `
+            <div class="edit-serv-item">${s} <i class="fas fa-times" style="color:red; cursor:pointer;" onclick="removeEditServ(${idx}, ${si})"></i></div>
+        `).join('');
+        html += `<div style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;"><b>Add More:</b></div>`;
+        config.services.filter(x => !editTempServs.includes(x)).forEach(s => {
+            html += `<div class="edit-serv-item" style="background:#eef;">${s} <i class="fas fa-plus" style="color:green; cursor:pointer;" onclick="addEditServ(${idx}, '${s}')"></i></div>`;
+        });
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `
+            <button class="btn btn-primary" style="width:100%; margin-top:15px;" onclick="updateReqServs(${idx})">Update Services</button>
+            <button class="btn" style="width:100%; margin-top:5px;" onclick="closeModal()">Cancel</button>
+        `;
+    }
+
+    function addEditServ(idx, s) { editTempServs.push(s); renderEditModal(idx); }
+    function removeEditServ(idx, si) { editTempServs.splice(si, 1); renderEditModal(idx); }
+    function updateReqServs(i) {
+        if(editTempServs.length === 0) return alert("Student must have at least one service!");
+        requests[i].servs = [...editTempServs];
+        requests[i].history.push({ step: "Services Updated", by: currentUser.name, time: new Date().toLocaleString() });
+        saveAll(); render(); closeModal();
+    }
+
+    function renderPanes() {
+        const item = (val, type, sel) => `<div style="padding:8px; font-size:12px; cursor:pointer; border-bottom:1px solid #eee; ${sel?'background:#eef; color:green;':''}" onclick="toggleS('${type}','${val}')">${val}</div>`;
+        document.getElementById('selServList').innerHTML = tempServs.map(x => item(x, 's', true)).join('');
+        document.getElementById('availServList').innerHTML = config.services.filter(x => !tempServs.includes(x)).map(x => item(x, 's', false)).join('');
+        document.getElementById('selRoleList').innerHTML = tempRoles.map(x => item(x, 'r', true)).join('');
+        document.getElementById('availRoleList').innerHTML = config.roles.filter(x => !tempRoles.includes(x)).map(x => item(x, 'r', false)).join('');
+    }
+
+    function toggleS(type, val) {
+        if(type==='s') tempServs = tempServs.includes(val) ? tempServs.filter(x=>x!==val) : [...tempServs, val];
+        else tempRoles = tempRoles.includes(val) ? tempRoles.filter(x=>x!==val) : [...tempRoles, val];
+        renderPanes();
+    }
+
+    function delegate(i) {
+        const nextStep = document.getElementById(`rR-${i}`).value;
+        const nextRoom = document.getElementById(`rRm-${i}`).value;
+        requests[i].step = nextStep;
+        requests[i].room = nextRoom;
+        requests[i].history.push({ step: nextStep, room: nextRoom, by: currentUser.name, time: new Date().toLocaleString() });
+        saveAll(); render();
+    }
+
+    function saveNewRequest() {
+        if(!document.getElementById('inName').value || tempServs.length === 0) return alert("Fill Name & Services!");
+        requests.push({
+            name: document.getElementById('inName').value, dept: document.getElementById('inDept').value,
+            servs: [...tempServs], step: config.roles[0], room: config.rooms[0],
+            createdBy: currentUser.name, // Tracking who registered the student
+            history: [{step: "Registered", room: config.rooms[0], by: currentUser.name, time: new Date().toLocaleString()}]
+        });
+        tempServs = []; saveAll(); render(); nav('view-dash', document.querySelector('.nav-item'));
+    }
+
+    function saveStaff() {
+        users.push({
+            name: document.getElementById('uFull').value, email: document.getElementById('uEmail').value,
+            login: document.getElementById('uId').value, pass: document.getElementById('uPw').value,
+            userRoles: [...tempRoles], office: document.getElementById('uRoomSelect').value, status: "Active"
+        });
+        tempRoles = []; saveAll(); render();
+    }
+
+    function openHist(i) {
+        const r = requests[i];
+        document.getElementById('modalTitle').innerText = r.name + " History";
+        document.getElementById('modalBody').innerHTML = `
+            <div style="margin-bottom:10px; font-size:12px; color:#777;">Registered by: ${r.createdBy || 'Unknown'}</div>
+            ${r.history.map(h => `
+                <div style="border-left:2px solid var(--accent); padding-left:10px; margin-bottom:10px;">
+                    <small>${h.time}</small><br>
+                    <b>${h.step}</b> ${h.room ? '(At: '+h.room+')' : ''}<br>
+                    <small>By: ${h.by}</small>
+                </div>`).join('')}`;
+        document.getElementById('modalFooter').innerHTML = `<button class="btn btn-primary" style="width:100%;" onclick="closeModal()">Close</button>`;
+        document.getElementById('appModal').style.display = 'flex';
+    }
+
+    function addConfig(k, id) { const v = document.getElementById(id).value; if(v){ config[k].push(v); document.getElementById(id).value=""; saveAll(); render(); } }
+    function remConfig(k, i) { config[k].splice(i,1); saveAll(); render(); }
+    function toggleStaff(i) { users[i].status = users[i].status === 'Active' ? 'Inactive' : 'Active'; saveAll(); render(); }
+    function delReq(i) { if(confirm("Delete?")) { requests.splice(i,1); saveAll(); render(); } }
+    function delUser(i) { if(confirm("Delete?")) { users.splice(i,1); saveAll(); render(); } }
+    function saveAll() { localStorage.setItem('hu_config', JSON.stringify(config)); localStorage.setItem('hu_users', JSON.stringify(users)); localStorage.setItem('hu_reqs', JSON.stringify(requests)); }
+    function nav(id, el) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section')); document.getElementById(id).classList.add('active-section'); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); el.classList.add('active'); }
+    function closeModal() { document.getElementById('appModal').style.display='none'; }
+    window.onload = () => { if(currentUser) render(); };
+</script>
+</body>
+</html>
